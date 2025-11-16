@@ -1,92 +1,277 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lara Arrival Countdown</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lara — Return Dashboard</title>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    body {
-      background-color: #015ca5;
-      color: #ffffff;
-      font-family: "Lucida Console", monospace;
-      margin: 0;
-      padding: 20px;
+    /* Windows 2003-ish skin */
+    :root{
+      --win-bg:#dcdcdc;
+      --win-title:#000080;
+      --win-text:#000;
+      --accent:#015ca5;
+      --mono: "Lucida Console", Monaco, monospace;
     }
-
-    .window {
-      border: 2px solid #c0c0c0;
-      background: #e5e5e5;
-      color: #000;
-      width: 500px;
-      margin: 40px auto;
-      box-shadow: 4px 4px #000;
-    }
-
-    .title-bar {
-      background: #000080;
-      color: white;
-      padding: 4px;
-      font-weight: bold;
-    }
-
-    .content {
-      padding: 20px;
-      font-size: 18px;
-    }
-
-    #beerContainer {
-      width: 100%;
-      height: 40px;
-      background: #777;
-      margin-top: 20px;
-      position: relative;
-    }
-
-    #beerFill {
-      background: #d4a017;
-      height: 100%;
-      width: 0%;
-      transition: width 1s linear;
-    }
+    html,body{height:100%;margin:0;font-family:var(--mono);background:linear-gradient(180deg,#01345a 0%, #062f4f 100%);color:var(--win-text)}
+    .desktop{padding:28px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:1200px;margin:18px auto}
+    .window{background:var(--win-bg);border:2px solid #808080;box-shadow:4px 4px #000;padding:0}
+    .title-bar{background:var(--win-title);color:#fff;padding:6px 8px;font-weight:bold;display:flex;justify-content:space-between;align-items:center}
+    .title-left{display:flex;gap:8px;align-items:center}
+    .title-controls{display:flex;gap:6px}
+    .title-controls div{width:14px;height:12px;border-radius:2px;background:#c0c0c0;border:1px solid #000}
+    .body{padding:12px;background:#f0f0f0}
+    .big-clock{font-size:28px}
+    .muted{color:#333;font-size:13px}
+    /* beer */
+    .beer-wrap{height:80px;background:#bbb;border:2px solid #777;position:relative;overflow:hidden}
+    .beer-liquid{position:absolute;left:0;bottom:0;height:100%;width:0;background:linear-gradient(#ffd66b,#d79e12);transition:width 900ms linear}
+    .beer-foam{position:absolute;left:0;top:0;width:100%;height:22px;background:radial-gradient(circle at 20% 30%, #fff 10%, rgba(255,255,255,0) 40%)}
+    /* small widgets */
+    .row{display:flex;gap:12px}
+    .col{flex:1}
+    canvas{background:transparent}
+    .panel-small{padding:8px;border:1px solid #999;background:#e9e9e9}
+    .foot{font-size:12px;color:#222;margin-top:8px}
+    .center{text-align:center}
+    .badge{display:inline-block;padding:4px 8px;background:#0b3b66;color:#fff;border-radius:4px;font-weight:bold}
+    /* footer */
+    .footer{grid-column:1/-1;margin-top:8px;text-align:center;color:#ddd;font-size:13px}
+    /* responsive */
+    @media (max-width:900px){.desktop{grid-template-columns:1fr;padding:12px}}
   </style>
 </head>
 <body>
-  <div class="window">
-    <div class="title-bar">Arrival Countdown - Windows 2003 Utility</div>
-    <div class="content">
-      <div id="countdown">Loading...</div>
-      <div id="beerContainer"><div id="beerFill"></div></div>
+  <div style="max-width:1300px;margin:6px auto;color:#fff;padding:6px 18px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+      <div style="font-family:var(--mono);font-size:20px">Lara — Return Dashboard <span style="font-size:13px;color:#cfe7ff;margin-left:8px">(Windows 2003 aesthetic)</span></div>
+      <div class="badge" id="statusBadge">Calculating…</div>
     </div>
   </div>
 
+  <div class="desktop">
+    <!-- Left column: main countdown + beer -->
+    <div class="window">
+      <div class="title-bar"><div class="title-left">Main Countdown</div><div class="title-controls"><div></div><div></div><div></div></div></div>
+      <div class="body">
+        <div class="big-clock" id="humanCountdown">Loading...</div>
+        <div class="muted">Arrival: <strong>November 26, 2025 — 22:00 (local)</strong></div>
+
+        <div style="margin-top:14px" class="panel-small">
+          <div class="muted">Progress from departure → arrival</div>
+          <div class="beer-wrap" id="beerContainer">
+            <div class="beer-liquid" id="beerFill"></div>
+            <div class="beer-foam"></div>
+          </div>
+          <div class="foot">When the beer is full, Lara is back. 🍺</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Middle column: charts -->
+    <div class="window">
+      <div class="title-bar"><div class="title-left">Graphs & Gauges</div><div class="title-controls"><div></div><div></div></div></div>
+      <div class="body">
+        <div class="row">
+          <div class="col panel-small">
+            <canvas id="daysLine" height="140"></canvas>
+            <div class="muted center">Days remaining (time series)</div>
+          </div>
+          <div class="col panel-small">
+            <canvas id="gaugeDonut" height="140"></canvas>
+            <div class="muted center">Percent until return</div>
+          </div>
+        </div>
+
+        <div style="margin-top:10px" class="row">
+          <div class="col panel-small center">
+            <div style="font-size:18px" id="countdownParts">—</div>
+            <div class="muted">D : H : M : S</div>
+          </div>
+          <div class="col panel-small center">
+            <div id="binaryLamp" style="font-size:22px">🔴 AWAY</div>
+            <div class="muted">Return indicator</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column: extras -->
+    <div class="window">
+      <div class="title-bar"><div class="title-left">Extras</div><div class="title-controls"><div></div></div></div>
+      <div class="body">
+        <div class="panel-small">
+          <canvas id="sparkline" height="80"></canvas>
+          <div class="muted">Randomized "mood" sparkline (plays with percent)</div>
+        </div>
+
+        <div style="margin-top:12px" class="panel-small">
+          <div class="muted">Countdown Console</div>
+          <pre style="background:#000;color:#0f0;padding:8px;margin:6px 0;border:1px solid #222;font-size:13px" id="console">Booting...
+</pre>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="footer">Made with care, faux-technical styling, and too much beer logic.</div>
+  </div>
+
   <script>
-    function updateCountdown() {
-      const arrival = new Date("2025-11-26T22:00:00").getTime();
-      const now = new Date().getTime();
-      const diff = arrival - now;
+    // ---------- Configuration ----------
+    const arrivalISO = '2025-11-26T22:00:00'; // fixed arrival
+    const arrival = new Date(arrivalISO);
 
-      if (diff <= 0) {
-        document.getElementById("countdown").innerHTML = "She has landed!";
-        document.getElementById("beerFill").style.width = "100%";
-        return;
-      }
-
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-      document.getElementById("countdown").innerHTML =
-        days + "d " + hours + "h " + minutes + "m " + seconds + "s until Lara lands in Switzerland.";
-
-      const total = arrival - new Date("2025-11-01T00:00:00").getTime();
-      const elapsed = now - new Date("2025-11-01T00:00:00").getTime();
-      const fillPercent = Math.min(100, Math.max(0, (elapsed / total) * 100));
-      document.getElementById("beerFill").style.width = fillPercent + "%";
+    // Interpret "gone since 2.5 months" as 2.5 months before today
+    function computeDepartureApprox(now){
+      // approx 2.5 months = 75 days (approx)
+      const dep = new Date(now.getTime() - 75 * 24 * 60 * 60 * 1000);
+      return dep;
     }
 
-    setInterval(updateCountdown, 1000);
-    updateCountdown();
+    // ---------- Helpers ----------
+    function pad(n){return n.toString().padStart(2,'0')}
+    function formatHuman(diffMs){
+      if(diffMs<=0) return '0d 00:00:00';
+      const d = Math.floor(diffMs/(1000*60*60*24));
+      const h = Math.floor((diffMs%(1000*60*60*24))/(1000*60*60));
+      const m = Math.floor((diffMs%(1000*60*60))/(1000*60));
+      const s = Math.floor((diffMs%(1000*60))/1000);
+      return d+'d '+pad(h)+':'+pad(m)+':'+pad(s);
+    }
+
+    // ---------- State ----------
+    const now = new Date();
+    const departure = computeDepartureApprox(now);
+
+    document.getElementById('departureDate').textContent = departure.toLocaleString();
+
+    // ---------- Percent calculation ----------
+    function percentProgress(nowDate){
+      const total = arrival.getTime() - departure.getTime();
+      const elapsed = nowDate.getTime() - departure.getTime();
+      return Math.min(1, Math.max(0, elapsed/total));
+    }
+
+    // ---------- DOM updates ----------
+    const beerFillEl = document.getElementById('beerFill');
+    const humanCountdownEl = document.getElementById('humanCountdown');
+    const statusBadge = document.getElementById('statusBadge');
+    const binaryLamp = document.getElementById('binaryLamp');
+    const consoleEl = document.getElementById('console');
+    const countdownPartsEl = document.getElementById('countdownParts');
+
+    function updateAll(){
+      const tNow = new Date();
+      const diff = arrival.getTime() - tNow.getTime();
+      const pct = percentProgress(tNow);
+      // beer
+      beerFillEl.style.width = Math.round(pct*100)+'%';
+      // main text
+      humanCountdownEl.textContent = formatHuman(diff) + ' until Lara lands in Switzerland.';
+      // badge
+      if(diff<=0){
+        statusBadge.textContent = 'LANDED';
+        statusBadge.style.background = '#2a7a2a';
+        binaryLamp.textContent = '🟢 BACK';
+      } else {
+        statusBadge.textContent = Math.round((1-pct)*100)+'% away';
+        statusBadge.style.background = '#0b3b66';
+        binaryLamp.textContent = '🔴 AWAY';
+      }
+      // countdown parts
+      const days = Math.floor(diff/(1000*60*60*24));
+      const hours = Math.floor((diff%(1000*60*60*24))/(1000*60*60));
+      const minutes = Math.floor((diff%(1000*60*60))/(1000*60));
+      const seconds = Math.floor((diff%(1000*60))/1000);
+      countdownPartsEl.textContent = `${days} : ${pad(hours)} : ${pad(minutes)} : ${pad(seconds)}`;
+      // console log lines
+      consoleEl.textContent = '';
+      consoleEl.textContent += `[${tNow.toLocaleString()}] Progress: ${Math.round(pct*100)}%
+`;
+      consoleEl.textContent += `ETA: ${arrival.toLocaleString()}
+`;
+      if(diff>0) consoleEl.textContent += `Time left: ${formatHuman(diff)}
+`;
+      else consoleEl.textContent += `Lara has landed. Welcome back!
+`;
+
+      // update charts
+      updateCharts(pct, diff, tNow);
+    }
+
+    // ---------- Charts ----------
+    let daysLineChart, donutChart, sparkChart;
+    const daysCtx = document.getElementById('daysLine').getContext('2d');
+    const donutCtx = document.getElementById('gaugeDonut').getContext('2d');
+    const sparkCtx = document.getElementById('sparkline').getContext('2d');
+
+    function initCharts(){
+      // days line: simulate remaining days each day from departure to arrival
+      const totalDays = Math.ceil((arrival.getTime()-departure.getTime())/(1000*60*60*24));
+      const labels = Array.from({length:Math.min(40,totalDays)}, (_,i)=>`D-${totalDays-i}`);
+      const data = labels.map((_,i)=>Math.max(0,totalDays - i));
+
+      daysLineChart = new Chart(daysCtx, {
+        type:'line',
+        data:{labels, datasets:[{label:'Days remaining',data,fill:true,tension:0.3}]},
+        options:{plugins:{legend:{display:false}},scales:{x:{display:false}}}
+      });
+
+      donutChart = new Chart(donutCtx, {
+        type:'doughnut',
+        data:{labels:['Done','Left'],datasets:[{data:[0,100],cutout:'70%'}]},
+        options:{plugins:{legend:{display:false},tooltip:{enabled:false}}}
+      });
+
+      sparkChart = new Chart(sparkCtx, {
+        type:'line',
+        data:{labels:Array.from({length:20},(_,i)=>i),datasets:[{data:Array.from({length:20},()=>Math.random()*50+10),tension:0.4,fill:true}]},
+        options:{plugins:{legend:{display:false}},scales:{x:{display:false},y:{display:false}},elements:{point:{radius:0}}}
+      });
+    }
+
+    function updateCharts(pct, diff, tNow){
+      // donut: show percent done
+      const done = Math.round(pct*100);
+      donutChart.data.datasets[0].data = [done,100-done];
+      donutChart.update('none');
+
+      // days line: remove oldest and push current days remaining
+      const daysRem = Math.max(0, Math.ceil(diff/(1000*60*60*24)));
+      if(daysLineChart.data.datasets[0].data.length>0){
+        // shift and push
+        if(daysLineChart.data.datasets[0].data.length>39){
+          daysLineChart.data.datasets[0].data.shift();
+          daysLineChart.data.labels.shift();
+        }
+        daysLineChart.data.datasets[0].data.push(daysRem);
+        daysLineChart.data.labels.push('t+'+Math.floor((tNow.getTime()-departure.getTime())/(1000*60*60*24))+'d');
+        daysLineChart.update('none');
+      }
+
+      // sparkline: nudge values towards percent
+      sparkChart.data.datasets[0].data = sparkChart.data.datasets[0].data.map(v=>v*0.92 + (Math.random()*10)*(pct));
+      sparkChart.update('none');
+    }
+
+    // ---------- init ----------
+    initCharts();
+    updateAll();
+    setInterval(updateAll,1000);
+
+    // aesthetic flourish: beep in console when near
+    setInterval(()=>{
+      const now2 = new Date();
+      const rem = arrival.getTime()-now2.getTime();
+      if(rem>0 && rem<1000*60*60*24){
+        consoleEl.textContent += `ALERT: Less than 24 hours remaining!
+`;
+      }
+    },60*1000);
+
   </script>
 </body>
 </html>
