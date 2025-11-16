@@ -1,270 +1,178 @@
-import React, { useEffect, useState, useMemo } from "react";
-
-// LaraArrivalLanding.jsx
-// Single-file React component (default export) for a Windows-2003-style landing page
-// that counts down to: 2025-11-26 22:00 (CET / Europe/Zurich).
-// Built with Tailwind classes (assumes Tailwind is set up in your project).
-
-export default function LaraArrivalLanding() {
-  // Target arrival moment encoded with explicit offset for Europe/Zurich (CET, UTC+1)
-  const ARRIVAL_ISO = "2025-11-26T22:00:00+01:00";
-  const arrivalDate = useMemo(() => new Date(ARRIVAL_ISO), []);
-
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 250);
-    return () => clearInterval(id);
-  }, []);
-
-  const msLeft = Math.max(0, arrivalDate.getTime() - now.getTime());
-  const totalMsFromNow = Math.max(1, arrivalDate.getTime() - Date.now());
-
-  // breakdown
-  const secs = Math.floor(msLeft / 1000) % 60;
-  const mins = Math.floor(msLeft / (1000 * 60)) % 60;
-  const hours = Math.floor(msLeft / (1000 * 60 * 60)) % 24;
-  const days = Math.floor(msLeft / (1000 * 60 * 60 * 24));
-
-  // percentage of wait completed (0..100). We treat 'total wait' as starting now until arrival.
-  // This means percentCompleted starts at 0 and goes to 100 as we approach arrival.
-  const percentCompleted = Math.min(100, Math.max(0, 100 * (1 - msLeft / totalMsFromNow)));
-
-  // For a nicer progress feel, we'll also compute an ETA progress (time-of-day progress) to animate micro-changes
-  const dayProgress = ((now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) / 86400) * 100;
-
-  // Helper to format numbers
-  const pad = (n) => (n < 10 ? `0${n}` : `${n}`);
-
-  // Small humorous indicators:
-  // - Beer fill percent: based on how close we are to arrival: when < 7 days left beer starts filling faster
-  const beerFill = (() => {
-    const msTotal = arrivalDate.getTime() - Date.now();
-    const daysLeft = msTotal / (1000 * 60 * 60 * 24);
-    // If more than 30 days, tiny sip; <=30 -> 10%; <=14 -> 30%; <=7 -> grows to 100%
-    if (daysLeft > 30) return 5;
-    if (daysLeft > 14) return 15;
-    if (daysLeft > 7) return 40;
-    // grow smoothly when <=7
-    const pct = Math.round(Math.min(100, 40 + (7 - daysLeft) / 7 * 60));
-    return pct;
-  })();
-
-  // Small system info lines to mimic a 'technical' dashboard
-  const systemInfo = [
-    `Arrival (Zurich) : ${arrivalDate.toLocaleString("en-CH", { timeZone: "Europe/Zurich" })}`,
-    `Local time       : ${now.toLocaleString()}`,
-    `Milliseconds left: ${msLeft}`,
-    `Progress (wait)  : ${Math.round(percentCompleted)}%`,
-  ];
-
-  return (
-    <div className="min-h-screen bg-[linear-gradient(#c0c8d6,#9aa7be)] p-6 font-sans text-sm">
-      {/* import retro pixel font via Google - if your build allows it, you can move to index.html */}
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');`}</style>
-
-      <div className="max-w-5xl mx-auto shadow-2xl border-2 border-black bg-[#e8eef6] rounded-md overflow-hidden" style={{ boxShadow: "8px 8px 0 rgba(0,0,0,0.4)" }}>
-        {/* Title bar (Windows 2003-ish) */}
-        <div className="flex items-center justify-between px-3 py-1 bg-gradient-to-b from-[#0b3a6b] to-[#08305a] text-white select-none">
-          <div className="flex items-center gap-3">
-            <div className="w-6 h-6 rounded-sm bg-[#e6e6e6] border border-black flex items-center justify-center text-black font-bold">L</div>
-            <div style={{ fontFamily: "'Press Start 2P', monospace" }}>Lara.isComing — SYSTEM MONITOR</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-[#ffb3b3] border border-black rounded-sm" />
-            <div className="w-3 h-3 bg-[#fff4b3] border border-black rounded-sm" />
-            <div className="w-3 h-3 bg-[#b3ffb3] border border-black rounded-sm" />
-          </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lara Returns — Windows 2003 Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background: #008080;
+      font-family: 'VT323', monospace;
+      font-size: 18px;
+    }
+    .window {
+      max-width: 1100px;
+      margin: 20px auto;
+      background: #c0c0c0;
+      border: 2px solid #000;
+      box-shadow: 4px 4px 0 rgba(0,0,0,0.7);
+    }
+    .titlebar {
+      background: linear-gradient(#000080, #0000a0);
+      color: white;
+      padding: 4px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .content {
+      padding: 15px;
+    }
+    .count {
+      font-size: 36px;
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+    .widget {
+      background: #e0e0e0;
+      border: 2px inset #000;
+      padding: 10px;
+      text-align: center;
+    }
+    .widget h3 {
+      margin-top: 0;
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+    .bar {
+      width: 100%;
+      background: #000;
+      height: 20px;
+      margin-top: 5px;
+      border: 1px solid #000;
+    }
+    .bar-fill {
+      height: 100%;
+      background: #00ff00;
+      transition: width 0.5s;
+    }
+    canvas {
+      background: #c0c0c0;
+      border: 1px solid #000;
+    }
+    .footer {
+      background: #c0c0c0;
+      padding: 8px;
+      border-top: 2px solid #000;
+      text-align: center;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="window">
+    <div class="titlebar">Lara.isComing — WINDOWS 2003 DASHBOARD <span>■ ■ ■</span></div>
+    <div class="content">
+      <h1 style="text-align:center; font-size:28px;">Countdown to Arrival</h1>
+      <div id="countdown" class="count">Loading…</div>
+      
+      <div class="dashboard">
+        <div class="widget">
+          <h3>Days Remaining</h3>
+          <div id="daysBar" class="bar"><div class="bar-fill" style="width:0%"></div></div>
         </div>
-
-        <div className="p-6 grid grid-cols-12 gap-6">
-          {/* Left column - big countdown */}
-          <div className="col-span-7 bg-[#dbe5f2] border border-black rounded-sm p-4">
-            <h2 className="text-2xl font-bold mb-3" style={{ fontFamily: "'Press Start 2P', monospace" }}>LARA RETURNS</h2>
-
-            <div className="flex gap-4 items-center">
-              <div className="w-64 h-64 bg-[#f6fbff] border border-black rounded-sm flex flex-col items-center justify-center" style={{ boxShadow: "inset 0 0 0 4px rgba(0,0,0,0.03)" }}>
-                <div className="text-xs mb-2">Countdown (days : hh : mm : ss)</div>
-                <div className="text-3xl font-bold" style={{ fontFamily: "'VT323', monospace" }}>
-                  {days} : {pad(hours)} : {pad(mins)} : {pad(secs)}
-                </div>
-
-                <div className="w-40 mt-4 text-xs">
-                  <div className="w-full bg-black h-3 rounded-sm overflow-hidden">
-                    <div className="h-3" style={{ width: `${Math.round(100 - (msLeft / (1000 * 60 * 60 * 24 * 30)))}%`, background: "linear-gradient(90deg,#00ff9c,#0096ff)" }} />
-                  </div>
-                  <div className="mt-1 text-[10px]">Time till touchdown: {Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)))} days</div>
-                </div>
-              </div>
-
-              {/* Beer visual */}
-              <div className="flex-1">
-                <div className="mb-2 text-sm">Thirst meter</div>
-                <BeerJar percent={beerFill} />
-                <div className="mt-2 text-xs">Beer filling: {beerFill}% — (approaching arrival = top off)</div>
-
-                <div className="mt-4">
-                  <div className="text-sm mb-2">Micro-progress (day)</div>
-                  <div className="w-full bg-black h-4 rounded-sm overflow-hidden">
-                    <div className="h-4" style={{ width: `${Math.min(100, Math.max(0, dayProgress))}%`, background: "linear-gradient(90deg,#ffb347,#ffcc33)" }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Funny Messages / status log */}
-            <div className="mt-6 bg-[#eef4fb] border border-black rounded-sm p-2 font-mono text-xs">
-              <div className="font-bold mb-1">STATUS LOG</div>
-              <ul className="list-disc pl-4 space-y-1">
-                <li>Waiting for customs clearance of hugs...</li>
-                <li>Extra socks queued for deployment</li>
-                <li>Local beer inventory flagged for emergency restock</li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Right column - system tiles */}
-          <div className="col-span-5 space-y-4">
-            <div className="bg-[#f2f7ff] border border-black rounded-sm p-3">
-              <div className="flex items-center justify-between">
-                <div className="font-bold">Quick stats</div>
-                <div className="text-xs">updated live</div>
-              </div>
-
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <StatBox label="Days" value={`${days}`} />
-                <StatBox label="Hours" value={`${hours}`} />
-                <StatBox label="Minutes" value={`${mins}`} />
-                <StatBox label="Seconds" value={`${secs}`} />
-              </div>
-
-              <div className="mt-3">
-                <div className="text-[11px] mb-1">Overall arrival progress</div>
-                <div className="w-full bg-black h-6 rounded-sm overflow-hidden">
-                  <div className="h-6 transition-all duration-300" style={{ width: `${Math.round(percentCompleted)}%`, background: "linear-gradient(90deg,#7efc6f,#3db2ff)" }} />
-                </div>
-                <div className="mt-1 text-[11px]">{Math.round(percentCompleted)}% of the wait completed</div>
-              </div>
-            </div>
-
-            <div className="bg-[#f2f7ff] border border-black rounded-sm p-3 font-mono text-xs">
-              <div className="font-bold mb-2">SYSTEM INFO</div>
-              {systemInfo.map((line, i) => (
-                <div key={i} className="truncate">{line}</div>
-              ))}
-
-              <div className="mt-3">
-                <button className="px-3 py-1 border border-black rounded-sm bg-white hover:brightness-95">Open console</button>
-                <button className="ml-2 px-3 py-1 border border-black rounded-sm bg-white hover:brightness-95">Ping Lara</button>
-              </div>
-            </div>
-
-            <div className="bg-[#f2f7ff] border border-black rounded-sm p-3">
-              <div className="font-bold">Humour Meter</div>
-              <div className="mt-2 text-[12px]">How ready are we to celebrate?</div>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                <MiniMeter label="Snacks" level={80} />
-                <MiniMeter label="Music" level={55} />
-                <MiniMeter label="Decor" level={30} />
-              </div>
-            </div>
-
-          </div>
+        <div class="widget">
+          <h3>Hours Remaining</h3>
+          <div id="hoursBar" class="bar"><div class="bar-fill" style="width:0%"></div></div>
         </div>
-
-        {/* Footer */}
-        <div className="bg-[#c8d6ec] px-4 py-2 border-t border-black text-[12px] font-mono">
-          <div className="max-w-5xl mx-auto flex items-center justify-between">
-            <div>l a r a . i s . c o m i n g</div>
-            <div>Arrival set to: <strong>{arrivalDate.toLocaleString("en-CH", { timeZone: "Europe/Zurich" })}</strong></div>
-          </div>
+        <div class="widget">
+          <h3>Minutes Remaining</h3>
+          <div id="minutesBar" class="bar"><div class="bar-fill" style="width:0%"></div></div>
+        </div>
+        <div class="widget">
+          <h3>Seconds Remaining</h3>
+          <div id="secondsBar" class="bar"><div class="bar-fill" style="width:0%"></div></div>
+        </div>
+        <div class="widget">
+          <h3>Fabios Mood</h3>
+          <canvas id="moodChart" width="200" height="150"></canvas>
+        </div>
+        <div class="widget">
+          <h3>Fabios Patience</h3>
+          <canvas id="patienceChart" width="200" height="150"></canvas>
+        </div>
+        <div class="widget">
+          <h3>Fabios Looks</h3>
+          <canvas id="looksChart" width="200" height="150"></canvas>
         </div>
       </div>
-
-      {/* small footer note */}
-      <div className="mt-4 text-center text-xs text-gray-700">Made with ❤️ and a touch of vintage Microsoft vibes. Hosted on GitHub?</div>
     </div>
-  );
+    <div class="footer">Arrival: 26 November 2025 — 22:00 (Zurich)</div>
+  </div>
+
+<script>
+const arrival = new Date('2025-11-26T22:00:00+01:00');
+
+function updateCountdown() {
+  const now = new Date();
+  let diff = arrival - now;
+  if(diff < 0) diff = 0;
+
+  const days = Math.floor(diff / (1000*60*60*24));
+  const hours = Math.floor((diff / (1000*60*60)) % 24);
+  const mins = Math.floor((diff / (1000*60)) % 60);
+  const secs = Math.floor((diff/1000) % 60);
+
+  document.getElementById('countdown').textContent = `${days}d : ${String(hours).padStart(2,'0')}h : ${String(mins).padStart(2,'0')}m : ${String(secs).padStart(2,'0')}s`;
+
+  document.querySelector('#daysBar .bar-fill').style.width = Math.min(100, 100 - days*2)+'%';
+  document.querySelector('#hoursBar .bar-fill').style.width = Math.min(100, 100 - hours*4)+'%';
+  document.querySelector('#minutesBar .bar-fill').style.width = Math.min(100, 100 - mins*1.6)+'%';
+  document.querySelector('#secondsBar .bar-fill').style.width = Math.min(100, 100 - secs*1.6)+'%';
 }
 
+setInterval(updateCountdown, 500);
+updateCountdown();
 
-// ---------- Small subcomponents ----------
-function StatBox({ label, value }) {
-  return (
-    <div className="bg-white border border-black rounded-sm p-2 text-center">
-      <div className="text-[10px] text-gray-700">{label}</div>
-      <div className="text-2xl font-bold" style={{ fontFamily: "'Press Start 2P', monospace" }}>{value}</div>
-    </div>
-  );
+function drawCharts() {
+  function randomLineData(length, min=0, max=100){
+    const arr=[];
+    for(let i=0;i<length;i++) arr.push(Math.random()*(max-min)+min);
+    return arr;
+  }
+
+  function drawLineChart(canvasId, color, data){
+    const canvas=document.getElementById(canvasId);
+    if(!canvas) return;
+    const ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height - data[0]);
+    for(let i=1;i<data.length;i++){
+      ctx.lineTo(i*4, canvas.height - data[i]);
+    }
+    ctx.strokeStyle=color;
+    ctx.lineWidth=2;
+    ctx.stroke();
+  }
+
+  drawLineChart('moodChart','#00ff00', randomLineData(50, 20, 100));
+  drawLineChart('patienceChart','#ffff00', randomLineData(50, 10, 90));
+  drawLineChart('looksChart','#ff00ff', Array(50).fill(100)); // always top
 }
 
-function MiniMeter({ label, level }) {
-  return (
-    <div className="bg-white border border-black rounded-sm p-2 text-center">
-      <div className="text-[11px]">{label}</div>
-      <div className="w-full bg-black h-3 rounded-sm overflow-hidden mt-2">
-        <div className="h-3" style={{ width: `${level}%`, background: "linear-gradient(90deg,#ff7e5f,#feb47b)" }} />
-      </div>
-      <div className="text-[10px] mt-1">{level}%</div>
-    </div>
-  );
-}
-
-function BeerJar({ percent = 0 }) {
-  // Simple SVG beer glass where the fill rect is masked to the beer body
-  const safePct = Math.max(0, Math.min(100, percent));
-  const height = 140; // px
-  const fillY = Math.round((100 - safePct) / 100 * height);
-
-  return (
-    <div className="relative w-full max-w-xs">
-      <svg viewBox="0 0 120 160" width="120" height="160" className="block mx-auto">
-        {/* glass outline */}
-        <rect x="8" y="10" width="104" height="120" rx="6" ry="6" fill="#eaf3ff" stroke="#222" strokeWidth="2" />
-
-        {/* beer mask area (we'll clip inside the glass) */}
-        <defs>
-          <clipPath id="glassClip">
-            <rect x="10" y="12" width="100" height="116" rx="6" ry="6" />
-          </clipPath>
-        </defs>
-
-        {/* beer fill (moves up as percent increases) */}
-        <g clipPath="url(#glassClip)">
-          <rect x="10" y={12 + fillY} width="100" height={height - fillY} rx="6" ry="6" fill="url(#beerGradient)" />
-
-          <defs>
-            <linearGradient id="beerGradient" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#ffd97a" />
-              <stop offset="100%" stopColor="#ffb347" />
-            </linearGradient>
-          </defs>
-
-          {/* tiny bubbles to add life */}
-          {Array.from({ length: 8 }).map((_, i) => (
-            <circle key={i} cx={20 + (i * 9) % 80} cy={130 - ((i * 17) % 100) - safePct * 0.2} r={2 + (i % 3)} fill="#fff7d6" opacity={0.6} />
-          ))}
-        </g>
-
-        {/* foam when close to arrival */}
-        {safePct > 80 && (
-          <g>
-            <ellipse cx="60" cy={12 + fillY} rx="40" ry="8" fill="#fff" opacity={0.9} />
-            <ellipse cx="40" cy={14 + fillY} rx="8" ry="4" fill="#fff" opacity={0.9} />
-            <ellipse cx="76" cy={14 + fillY} rx="6" ry="3" fill="#fff" opacity={0.9} />
-          </g>
-        )}
-
-        {/* measurement ticks on the side */}
-        <g>
-          {[0, 25, 50, 75, 100].map((t) => (
-            <line key={t} x1="114" x2="120" y1={12 + (100 - t) / 100 * height} y2={12 + (100 - t) / 100 * height} stroke="#222" strokeWidth="1" />
-          ))}
-        </g>
-
-      </svg>
-
-      <div className="absolute left-1/2 transform -translate-x-1/2 -bottom-3 text-[10px] font-mono">{safePct}%</div>
-    </div>
-  );
-}
+setInterval(drawCharts,1000);
+</script>
+</body>
+</html>
