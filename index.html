@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Lara Returns — Windows 2003 Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,11 +12,10 @@
       margin: 0;
       background: #008080;
       font-family: 'VT323', monospace;
-      font-size: 18px;
+      font-size: 16px;
     }
     .window {
-      max-width: 1100px;
-      margin: 20px auto;
+      margin: 10px;
       background: #c0c0c0;
       border: 2px solid #000;
       box-shadow: 4px 4px 0 rgba(0,0,0,0.7);
@@ -28,37 +27,38 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: bold;
     }
     .content {
-      padding: 15px;
+      padding: 10px;
     }
     .count {
-      font-size: 36px;
+      font-size: 28px;
       text-align: center;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
+      word-break: break-word;
     }
     .dashboard {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 15px;
+      gap: 10px;
     }
     .widget {
       background: #e0e0e0;
       border: 2px inset #000;
-      padding: 10px;
+      padding: 8px;
       text-align: center;
     }
     .widget h3 {
       margin-top: 0;
-      font-size: 18px;
-      margin-bottom: 8px;
+      font-size: 16px;
+      margin-bottom: 6px;
     }
     .bar {
       width: 100%;
       background: #000;
-      height: 20px;
+      height: 16px;
       margin-top: 5px;
       border: 1px solid #000;
     }
@@ -68,15 +68,32 @@
       transition: width 0.5s;
     }
     canvas {
+      width: 100%;
+      height: 150px;
       background: #c0c0c0;
       border: 1px solid #000;
     }
     .footer {
       background: #c0c0c0;
-      padding: 8px;
+      padding: 6px;
       border-top: 2px solid #000;
       text-align: center;
-      font-size: 16px;
+      font-size: 14px;
+    }
+
+    @media (max-width: 768px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+      .count {
+        font-size: 24px;
+      }
+      .widget h3 {
+        font-size: 14px;
+      }
+      canvas {
+        height: 120px;
+      }
     }
   </style>
 </head>
@@ -84,7 +101,7 @@
   <div class="window">
     <div class="titlebar">Lara.isComing — WINDOWS 2003 DASHBOARD <span>■ ■ ■</span></div>
     <div class="content">
-      <h1 style="text-align:center; font-size:28px;">Countdown to Arrival</h1>
+      <h1 style="text-align:center; font-size:24px;">Countdown to Arrival</h1>
       <div id="countdown" class="count">Loading…</div>
       
       <div class="dashboard">
@@ -106,15 +123,15 @@
         </div>
         <div class="widget">
           <h3>Fabios Mood</h3>
-          <canvas id="moodChart" width="200" height="150"></canvas>
+          <canvas id="moodChart"></canvas>
         </div>
         <div class="widget">
           <h3>Fabios Patience</h3>
-          <canvas id="patienceChart" width="200" height="150"></canvas>
+          <canvas id="patienceChart"></canvas>
         </div>
         <div class="widget">
           <h3>Fabios Looks</h3>
-          <canvas id="looksChart" width="200" height="150"></canvas>
+          <canvas id="looksChart"></canvas>
         </div>
       </div>
     </div>
@@ -160,7 +177,7 @@ function drawCharts() {
     ctx.beginPath();
     ctx.moveTo(0, canvas.height - data[0]);
     for(let i=1;i<data.length;i++){
-      ctx.lineTo(i*4, canvas.height - data[i]);
+      ctx.lineTo(i*(canvas.width/data.length), canvas.height - data[i]);
     }
     ctx.strokeStyle=color;
     ctx.lineWidth=2;
@@ -169,7 +186,7 @@ function drawCharts() {
 
   drawLineChart('moodChart','#00ff00', randomLineData(50, 20, 100));
   drawLineChart('patienceChart','#ffff00', randomLineData(50, 10, 90));
-  drawLineChart('looksChart','#ff00ff', Array(50).fill(100)); // always top
+  drawLineChart('looksChart','#ff00ff', Array(50).fill(100));
 }
 
 setInterval(drawCharts,1000);
